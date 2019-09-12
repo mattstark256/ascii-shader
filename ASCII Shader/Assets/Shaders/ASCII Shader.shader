@@ -8,6 +8,8 @@
 		_CellSize("Cell Size", Vector) = (8, 12, 0, 0)
 		_CharacterCount("Character Count", int) = 10
 		_BoundaryWidth("Boundary Width", Float) = 2
+		_MaxBrightness("Max Brightness", Float) = 1.2
+		_MinBrightness("Min Brightness", Float) = 0.1
     }
     SubShader
     {
@@ -47,6 +49,8 @@
 			float4 _CellSize;
 			int _CharacterCount;
 			float _BoundaryWidth;
+			float _MaxBrightness;
+			float _MinBrightness;
 
             fixed4 frag (v2f i) : SV_Target
             {
@@ -82,7 +86,7 @@
 
 				// Use the sampled color to get a brightness value from 0 to _CharacterCount - 1
 				float brightness = (texCol.r + texCol.g + texCol.b) / 3;
-				brightness *= 0.8f; // handle HDR?
+				brightness = (brightness - _MinBrightness) / (_MaxBrightness - _MinBrightness);
 				brightness += ((characterPos.x + characterPos.y) % 2 * 0.5 - 0.25) / _CharacterCount; // Dither
 				brightness = clamp(brightness, 0, 1);
 				brightness = (brightness == 1) ? _CharacterCount - 1 : floor(brightness * _CharacterCount);
