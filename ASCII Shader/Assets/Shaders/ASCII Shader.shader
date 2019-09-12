@@ -7,6 +7,7 @@
 
 		_CellSize("Cell Size", Vector) = (8, 12, 0, 0)
 		_CharacterCount("Character Count", int) = 10
+		_BoundaryWidth("Boundary Width", Float) = 2
     }
     SubShader
     {
@@ -45,6 +46,7 @@
 			sampler2D _CharacterTex;
 			float4 _CellSize;
 			int _CharacterCount;
+			float _BoundaryWidth;
 
             fixed4 frag (v2f i) : SV_Target
             {
@@ -55,21 +57,31 @@
 				float2 characterCoOrds = float2(pixelCoOrds.x % _CellSize.x, pixelCoOrds.y % _CellSize.y);
 
 				// Get the character's position
-				float2 characterPos = float2((pixelCoOrds.x - characterCoOrds.x) / _CellSize.x, (pixelCoOrds.y - characterCoOrds.y) / _CellSize.y);
+				float2 characterPos = round(float2((pixelCoOrds.x - characterCoOrds.x) / _CellSize.x, (pixelCoOrds.y - characterCoOrds.y) / _CellSize.y));
+
+				// Crop edges
+				float2 center = (characterPos + float2(0.5, 0.5)) * _CellSize;
+				if (center.x < _BoundaryWidth ||
+					center.y < _BoundaryWidth ||
+					center.x > _ScreenParams.x - _BoundaryWidth ||
+					center.y > _ScreenParams.y - _BoundaryWidth)
+				{
+					return fixed4(0, 0, 0, 1);
+				}
 
 				// Sample the camera texture, taking an average of four points
 				float2 texCoOrds1 = characterPos * _CellSize / _ScreenParams.xy;
 				float2 texCoOrds2 = (characterPos + float2(0.5, 0)) * _CellSize / _ScreenParams.xy;
 				float2 texCoOrds3 = (characterPos + float2(0.5, 0.5)) * _CellSize / _ScreenParams.xy;
 				float2 texCoOrds4 = (characterPos + float2(0, 0.5)) * _CellSize / _ScreenParams.xy;
-				fixed4 centerCol =(
+				fixed4 texCol =(
 					tex2D(_MainTex, texCoOrds1) +
 					tex2D(_MainTex, texCoOrds2) +
 					tex2D(_MainTex, texCoOrds3) +
 					tex2D(_MainTex, texCoOrds4)) / 4;
 
 				// Use the sampled color to get a brightness value from 0 to _CharacterCount - 1
-				float brightness = (centerCol.r + centerCol.g + centerCol.b) / 3;
+				float brightness = (texCol.r + texCol.g + texCol.b) / 3;
 				brightness *= 0.8f; // handle HDR?
 				brightness += ((characterPos.x + characterPos.y) % 2 * 0.5 - 0.25) / _CharacterCount; // Dither
 				brightness = clamp(brightness, 0, 1);
